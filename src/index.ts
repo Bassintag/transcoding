@@ -38,6 +38,7 @@ const next = async () => {
 };
 
 const addFileToQueue = (param: WebhookCall) => {
+  console.log("Adding to queue:", param);
   queue.push(param);
   void next();
 };

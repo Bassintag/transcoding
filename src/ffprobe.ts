@@ -14,6 +14,7 @@ export interface FFProbeResult {
 }
 
 export const ffprobe = async (path: string): Promise<FFProbeResult> => {
+  console.log("Probing file:", path);
   const probe =
     await $`ffprobe -v quiet -print_format json -show_streams ${path}`.quiet();
   const data = probe.json() as { streams: any[] };
