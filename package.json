@@ -1,0 +1,16 @@
+{
+  "name": "transcoding",
+  "module": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "run": "bun src/index.ts",
+    "watch": "bun src/index.ts --watch"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "prettier": "^3.2.5"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
