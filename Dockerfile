@@ -7,6 +7,11 @@ COPY package.json bun.lockb /temp/prod/
 RUN cd /temp/prod && bun install --frozen-lockfile --production
 
 FROM base AS release
+
+RUN apt-get update
+RUN apt-get upgrade
+RUN apt-get install -y ffmpeg
+
 COPY --from=install /temp/prod/node_modules node_modules
 COPY ./src src
 COPY ./package.json .
