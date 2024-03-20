@@ -1,5 +1,4 @@
 import { $ } from "bun";
-import * as stream from "stream";
 
 export interface FFProbeStream {
   index: number;
@@ -25,6 +24,8 @@ export const ffprobe = async (path: string): Promise<FFProbeResult> => {
     if (stream.codec_type !== currentType) {
       currentType = stream.codec_type;
       index = 0;
+    } else {
+      index += 1;
     }
     stream.type_index = index;
   }
