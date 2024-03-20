@@ -19,11 +19,14 @@ export const fetchRadarr = async <T>(
     headers["Content-Type"] = "applications/json";
     init.body = JSON.stringify(json);
   }
+  console.log("[OUTGOING]", url.href, init);
   const response = await fetch(url.href, init);
+  const data = await response.text();
+  console.log("[INCOMING]", url.href, response.status, data);
   if (!response.ok) {
-    throw new Error(await response.text());
+    throw new Error(data);
   }
-  return (await response.json()) as T;
+  return JSON.parse(data) as T;
 };
 
 export interface ListMovieFolderFilesParam {

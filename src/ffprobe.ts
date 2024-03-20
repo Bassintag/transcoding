@@ -17,7 +17,6 @@ export const ffprobe = async (path: string): Promise<FFProbeResult> => {
   const probe =
     await $`ffprobe -v quiet -print_format json -show_streams ${path}`.quiet();
   const data = probe.json() as { streams: any[] };
-  console.log(data);
   let currentType: string = "video";
   let index = 0;
   for (const stream of data.streams) {

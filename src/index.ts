@@ -106,15 +106,4 @@ Bun.serve({
   port,
 });
 
-addFileToQueue({
-  movie: {
-    id: 1,
-    folderPath: "/movies",
-  },
-  movieFile: {
-    id: 2,
-    relativePath: "requiem.mkv",
-  },
-});
-
 console.log("Listening on port:", port);
