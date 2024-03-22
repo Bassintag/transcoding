@@ -110,6 +110,7 @@ const handleFile = async (param: QueuedWebhookCall) => {
     outputPath,
     audioIndex: audioStream.typeIndex,
     discordWebhook,
+    streams,
   });
   await updateDiscordWebhook({
     ...discordWebhook,
