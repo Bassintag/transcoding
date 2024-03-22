@@ -37,7 +37,7 @@ export const ffmpeg = async ({
     "-c:v",
     "copy",
   ];
-  if (audioIndex) {
+  if (audioIndex != null) {
     cmd.push("-map", `0:a:${audioIndex}`, "-c:a", "aac");
   }
   const subStreams = streams.filter(
