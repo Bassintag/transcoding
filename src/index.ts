@@ -1,12 +1,24 @@
 import { ffmpeg } from "./ffmpeg.ts";
-import { ffprobe } from "./ffprobe.ts";
+import { ffprobe, type FFProbeStream } from "./ffprobe.ts";
 import * as path from "path";
 import {
   deleteMovieFile,
   importMovieFile,
+  listLanguages,
   listMovieFolderFiles,
 } from "./radarr.ts";
 import { unlink } from "node:fs/promises";
+import {
+  notSubtitledStreamSelector,
+  simpleLanguageStreamSelector,
+} from "./streamSelectors.ts";
+import {
+  createDiscordWebhook,
+  type DiscordWebhook,
+  DiscordWebhookStatus,
+  updateDiscordWebhook,
+} from "./discord.ts";
+import { getName } from "@cospired/i18n-iso-languages";
 
 interface WebhookCall {
   movie: {
@@ -19,8 +31,12 @@ interface WebhookCall {
   };
 }
 
+interface QueuedWebhookCall extends WebhookCall {
+  discordWebhook: DiscordWebhook;
+}
+
 let queueBusy = false;
-const queue: WebhookCall[] = [];
+const queue: QueuedWebhookCall[] = [];
 
 const next = async () => {
   if (queueBusy) return;
@@ -37,13 +53,19 @@ const next = async () => {
   }
 };
 
-const addFileToQueue = (param: WebhookCall) => {
+const addFileToQueue = async (param: WebhookCall) => {
   console.log("Adding to queue:", param);
-  queue.push(param);
+  queue.push({
+    ...param,
+    discordWebhook: await createDiscordWebhook({
+      inputFile: param.movieFile.relativePath,
+      status: DiscordWebhookStatus.QUEUED,
+    }),
+  });
   void next();
 };
 
-const handleFile = async (param: WebhookCall) => {
+const handleFile = async (param: QueuedWebhookCall) => {
   const inputPath = path.join(
     process.env.LIBRARY_PATH as string,
     param.movie.folderPath,
@@ -51,30 +73,60 @@ const handleFile = async (param: WebhookCall) => {
   );
   const extname = path.extname(inputPath);
   if (extname === ".mp4") return;
+  let { discordWebhook } = param;
   const folderPath = path.dirname(inputPath);
   const inputFileName = path.basename(inputPath);
   const outputFileName = inputFileName.replace(/\.\w+$/, ".mp4");
   const outputPath = path.join(folderPath, outputFileName);
-
-  const { streams } = await ffprobe(inputPath);
+  discordWebhook = await updateDiscordWebhook({
+    ...discordWebhook,
+    status: DiscordWebhookStatus.PROCESSING,
+    outputFile: outputFileName,
+  });
+  const probeResult = await ffprobe(inputPath);
+  const { streams } = probeResult;
   const videoStream = streams.find((s) => s.type === "video");
   const audioStreams = streams.filter((s) => s.type === "audio");
   if (videoStream == null) return;
-  let audioIndex: number = 0;
-  const preferredLanguages = [videoStream.language, "eng", "fra", "fre"];
-  for (const language of preferredLanguages) {
-    const match = audioStreams.find((s) => s.language === language);
+  let audioStream: FFProbeStream = audioStreams[audioStreams.length - 1];
+  const streamSelectors = [
+    simpleLanguageStreamSelector(videoStream.language),
+    notSubtitledStreamSelector(probeResult),
+  ];
+  for (const streamSelector of streamSelectors) {
+    const match = streamSelector(audioStreams);
     if (match) {
-      audioIndex = match.typeIndex;
+      audioStream = match;
       break;
     }
   }
+  discordWebhook = await updateDiscordWebhook({
+    ...discordWebhook,
+    audioLanguage: audioStream.language,
+    totalTime: probeResult.format.duration,
+  });
   await ffmpeg({
     inputPath,
     outputPath,
-    audioIndex,
+    audioIndex: audioStream.typeIndex,
+    discordWebhook,
+  });
+  await updateDiscordWebhook({
+    ...discordWebhook,
+    status: DiscordWebhookStatus.DONE,
+    speed: undefined,
+    currentTime: undefined,
   });
   await unlink(inputPath);
+  const languages = await listLanguages();
+  const audioLanguageName = getName(audioStream.language, "en");
+  if (audioLanguageName == null) {
+    throw new Error("Could not find language");
+  }
+  const radarrLanguage = languages.find((l) => l.name === audioLanguageName);
+  if (radarrLanguage == null) {
+    throw new Error("Could not find language id");
+  }
   const items = await listMovieFolderFiles({
     movieId: param.movie.id,
     folderPath: param.movie.folderPath,
@@ -87,6 +139,7 @@ const handleFile = async (param: WebhookCall) => {
       movieId: param.movie.id,
       language: outputMovieFile.language,
       quality: outputMovieFile.quality,
+      languages: [radarrLanguage],
     });
   }
   await deleteMovieFile(param.movieFile.id);
@@ -107,3 +160,14 @@ Bun.serve({
 });
 
 console.log("Listening on port:", port);
+//
+// addFileToQueue({
+//   movie: {
+//     id: 123,
+//     folderPath: "movies",
+//   },
+//   movieFile: {
+//     id: 233,
+//     relativePath: "requiem.mkv",
+//   },
+// });

@@ -1,12 +1,71 @@
-import {$} from "bun";
+import { spawn } from "bun";
+import { type DiscordWebhook, updateDiscordWebhook } from "./discord.ts";
 
 export interface FfmpegOptions {
   inputPath: string;
   outputPath: string;
+  discordWebhook: DiscordWebhook;
   audioIndex?: number;
 }
 
-export const ffmpeg = async ({inputPath, outputPath, audioIndex = 0}: FfmpegOptions) => {
-  console.log("Convert:", inputPath, "to:", outputPath)
-  await $`ffmpeg -y -v quiet -i ${inputPath} -map 0:v:0 -c:v copy -map 0:a:${audioIndex}? -c:a aac -map 0:s? -c:s mov_text ${outputPath}`.quiet();
-}
+export const ffmpeg = async ({
+  inputPath,
+  outputPath,
+  audioIndex = 0,
+  discordWebhook,
+}: FfmpegOptions) => {
+  console.log("Convert:", inputPath, "to:", outputPath);
+  return new Promise<void>(async (resolve) => {
+    const proc = spawn(
+      [
+        "ffmpeg",
+        "-y",
+        "-v",
+        "quiet",
+        "-progress",
+        "-",
+        "-stats_period",
+        "5",
+        "-nostats",
+        "-i",
+        inputPath,
+        "-map",
+        "0:v:0",
+        "-c:v",
+        "copy",
+        "-map",
+        `0:a:${audioIndex}?`,
+        "-c:a",
+        "aac",
+        "-map",
+        "0:s?",
+        "-c:s",
+        "mov_text",
+        outputPath,
+      ],
+      {
+        onExit: () => resolve(),
+      },
+    );
+    const decoder = new TextDecoder();
+    for await (const part of proc.stdout) {
+      const data = decoder.decode(part);
+      console.log(data);
+      for (const line of data.split("\n")) {
+        const parts = line.split("=");
+        if (parts.length !== 2) continue;
+        const [key, value] = parts;
+        switch (key) {
+          case "speed":
+            discordWebhook.speed = value;
+            break;
+          case "out_time_ms":
+            discordWebhook.currentTime = parseInt(value) / 1_000_000;
+            break;
+        }
+      }
+      console.log(discordWebhook);
+      await updateDiscordWebhook(discordWebhook);
+    }
+  });
+};
