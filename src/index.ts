@@ -160,14 +160,14 @@ Bun.serve({
 });
 
 console.log("Listening on port:", port);
-
-addFileToQueue({
-  movie: {
-    id: 123,
-    folderPath: "movies",
-  },
-  movieFile: {
-    id: 233,
-    relativePath: "requiem.mkv",
-  },
-});
+//
+// addFileToQueue({
+//   movie: {
+//     id: 123,
+//     folderPath: "movies",
+//   },
+//   movieFile: {
+//     id: 233,
+//     relativePath: "requiem.mkv",
+//   },
+// });

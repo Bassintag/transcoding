@@ -1,4 +1,4 @@
-FROM oven/bun:1 as base
+FROM oven/bun:1-alpine as base
 WORKDIR /usr/src/app
 
 FROM base AS install
@@ -8,9 +8,8 @@ RUN cd /temp/prod && bun install --frozen-lockfile --production
 
 FROM base AS release
 
-RUN apt-get update
-RUN apt-get upgrade
-RUN apt-get install -y ffmpeg
+RUN apk update
+RUN apk add ffmpeg
 
 COPY --from=install /temp/prod/node_modules node_modules
 COPY ./src src
