@@ -36,21 +36,20 @@ export const ffmpeg = async ({
     "0:v:0",
     "-c:v",
     "copy",
-    "-map",
-    `0:a:${audioIndex}?`,
-    "-c:a",
-    "aac",
-    "-map",
-    "0:s?",
   ];
+  if (audioIndex) {
+    cmd.push("-map", `0:a:${audioIndex}`, "-c:a", "aac");
+  }
   const subStreams = streams.filter(
     (s) => s.type === "subtitle" && acceptedSubtitleCodecs.includes(s.codec),
   );
   if (subStreams.length > 0) {
-    for (const stream of subStreams)
+    for (const stream of subStreams) {
       cmd.push("-map", `0:s:${stream.typeIndex}`);
-    cmd.push(outputPath, "-c:s", "mov_text");
+    }
+    cmd.push("-c:s", "mov_text");
   }
+  cmd.push(outputPath);
   console.log(cmd.join(" "));
   return new Promise<void>(async (resolve, reject) => {
     const proc = spawn(cmd, {
