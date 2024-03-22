@@ -15,13 +15,13 @@ export const ffmpeg = async ({
   discordWebhook,
 }: FfmpegOptions) => {
   console.log("Convert:", inputPath, "to:", outputPath);
-  return new Promise<void>(async (resolve) => {
+  return new Promise<void>(async (resolve, reject) => {
     const proc = spawn(
       [
         "ffmpeg",
         "-y",
         "-v",
-        "quiet",
+        "error",
         "-progress",
         "-",
         "-stats_period",
@@ -44,13 +44,19 @@ export const ffmpeg = async ({
         outputPath,
       ],
       {
-        onExit: () => resolve(),
+        onExit: (_, code) => {
+          console.log("EXIT:", code);
+          if (code === 0) {
+            resolve();
+          } else {
+            reject();
+          }
+        },
       },
     );
     const decoder = new TextDecoder();
     for await (const part of proc.stdout) {
       const data = decoder.decode(part);
-      console.log(data);
       for (const line of data.split("\n")) {
         const parts = line.split("=");
         if (parts.length !== 2) continue;
@@ -64,7 +70,6 @@ export const ffmpeg = async ({
             break;
         }
       }
-      console.log(discordWebhook);
       await updateDiscordWebhook(discordWebhook);
     }
   });
