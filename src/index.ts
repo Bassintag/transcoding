@@ -72,8 +72,14 @@ const handleFile = async (param: QueuedWebhookCall) => {
     param.movieFile.relativePath,
   );
   const extname = path.extname(inputPath);
-  if (extname === ".mp4") return;
   let { discordWebhook } = param;
+  if (extname === ".mp4") {
+    await updateDiscordWebhook({
+      ...discordWebhook,
+      status: DiscordWebhookStatus.DONE,
+    });
+    return;
+  }
   const folderPath = path.dirname(inputPath);
   const inputFileName = path.basename(inputPath);
   const outputFileName = inputFileName.replace(/\.\w+$/, ".mp4");
@@ -161,14 +167,14 @@ Bun.serve({
 });
 
 console.log("Listening on port:", port);
-//
-// addFileToQueue({
-//   movie: {
-//     id: 123,
-//     folderPath: "movies",
-//   },
-//   movieFile: {
-//     id: 233,
-//     relativePath: "requiem.mkv",
-//   },
-// });
+
+addFileToQueue({
+  movie: {
+    id: 123,
+    folderPath: "movies",
+  },
+  movieFile: {
+    id: 233,
+    relativePath: "malkovich.mkv",
+  },
+});

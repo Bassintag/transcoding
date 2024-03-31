@@ -10,7 +10,7 @@ export interface FfmpegOptions {
   audioIndex?: number;
 }
 
-const acceptedSubtitleCodecs = ["srt", "mov_text"];
+const acceptedSubtitleCodecs = ["srt", "subrip", "mov_text"];
 
 export const ffmpeg = async ({
   inputPath,
@@ -40,6 +40,7 @@ export const ffmpeg = async ({
   if (audioIndex != null) {
     cmd.push("-map", `0:a:${audioIndex}`, "-c:a", "aac");
   }
+  console.log(streams);
   const subStreams = streams.filter(
     (s) => s.type === "subtitle" && acceptedSubtitleCodecs.includes(s.codec),
   );
