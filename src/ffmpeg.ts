@@ -22,6 +22,8 @@ export const ffmpeg = async ({
   console.log("Convert:", inputPath, "to:", outputPath);
   const cmd = [
     "ffmpeg",
+    "-i",
+    inputPath,
     "-y",
     "-v",
     "error",
@@ -30,15 +32,35 @@ export const ffmpeg = async ({
     "-stats_period",
     "5",
     "-nostats",
-    "-i",
-    inputPath,
+    // Streaming
+    "-movflags",
+    "faststart",
+    // Video
+    "-c:v",
+    "libx264",
+    "-crf",
+    "23",
+    "-profile:v",
+    "baseline",
+    "-level",
+    "3.0",
+    "-pix_fmt",
+    "yuv420p",
     "-map",
     "0:v:0",
-    "-c:v",
-    "copy",
   ];
   if (audioIndex != null) {
-    cmd.push("-map", `0:a:${audioIndex}`, "-c:a", "aac");
+    // Audio
+    cmd.push(
+      "-map",
+      `0:a:${audioIndex}`,
+      "-c:a",
+      "aac",
+      "-ac",
+      "2",
+      "-b:a",
+      "128k",
+    );
   }
   console.log(streams);
   const subStreams = streams.filter(

@@ -7,7 +7,6 @@ import {
   listLanguages,
   listMovieFolderFiles,
 } from "./radarr.ts";
-import { unlink } from "node:fs/promises";
 import {
   notSubtitledStreamSelector,
   simpleLanguageStreamSelector,
@@ -19,6 +18,7 @@ import {
   updateDiscordWebhook,
 } from "./discord.ts";
 import { getName } from "@cospired/i18n-iso-languages";
+import { unlink } from "node:fs/promises";
 
 interface WebhookCall {
   movie: {
@@ -47,6 +47,13 @@ const next = async () => {
     await handleFile(param);
   } catch (e) {
     console.error(e);
+    param.discordWebhook.status = DiscordWebhookStatus.ERROR;
+    if (e instanceof Error) {
+      param.discordWebhook.error = e.message;
+    } else {
+      param.discordWebhook.error = "Unknown error";
+    }
+    await updateDiscordWebhook(param.discordWebhook);
   } finally {
     queueBusy = false;
     void next();
@@ -71,18 +78,10 @@ const handleFile = async (param: QueuedWebhookCall) => {
     param.movie.folderPath,
     param.movieFile.relativePath,
   );
-  const extname = path.extname(inputPath);
   let { discordWebhook } = param;
-  if (extname === ".mp4") {
-    await updateDiscordWebhook({
-      ...discordWebhook,
-      status: DiscordWebhookStatus.DONE,
-    });
-    return;
-  }
   const folderPath = path.dirname(inputPath);
   const inputFileName = path.basename(inputPath);
-  const outputFileName = inputFileName.replace(/\.\w+$/, ".mp4");
+  const outputFileName = inputFileName.replace(/\.\w+$/, ".out.mp4");
   const outputPath = path.join(folderPath, outputFileName);
   discordWebhook = await updateDiscordWebhook({
     ...discordWebhook,
@@ -160,7 +159,7 @@ Bun.serve({
       return new Response(undefined, { status: 405 });
     }
     const body = (await request.json()) as WebhookCall;
-    addFileToQueue(body);
+    void addFileToQueue(body);
     return new Response(undefined, { status: 200 });
   },
   port,

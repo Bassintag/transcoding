@@ -7,6 +7,7 @@ export enum DiscordWebhookStatus {
   QUEUED,
   PROCESSING,
   DONE,
+  ERROR,
 }
 
 const statusConfigs = {
@@ -22,6 +23,10 @@ const statusConfigs = {
     color: 0x84cc16,
     label: "Done",
   },
+  [DiscordWebhookStatus.ERROR]: {
+    color: 0xef4444,
+    label: "Error",
+  },
 };
 
 export interface DiscordWebhook {
@@ -33,6 +38,7 @@ export interface DiscordWebhook {
   speed?: string;
   totalTime?: number;
   currentTime?: number;
+  error?: string;
 }
 
 export interface CreateDiscordWebhook extends Omit<DiscordWebhook, "id"> {}
@@ -113,6 +119,12 @@ const formatDiscordWebhook = (data: CreateDiscordWebhook): string => {
             ? {
                 name: "Progress",
                 value: getProgressBar(data.currentTime / data.totalTime),
+              }
+            : null,
+          data.error
+            ? {
+                name: "Error Message",
+                value: `\`\`\`\n${data.error}\n\`\`\``,
               }
             : null,
         ].filter((f) => f != null && f.value != null),
