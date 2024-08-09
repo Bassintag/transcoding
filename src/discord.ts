@@ -174,6 +174,17 @@ export const createDiscordWebhook = async (data: CreateDiscordWebhook) => {
   return await fetchDiscord({ data, method: "POST" });
 };
 
-export const updateDiscordWebhook = async ({ id, ...data }: DiscordWebhook) => {
-  return await fetchDiscord({ path: `messages/${id}`, data, method: "PATCH" });
+export const updateDiscordWebhook = async (webhook: DiscordWebhook) => {
+  const { id, ...data } = webhook;
+  try {
+    return await fetchDiscord({
+      path: `messages/${id}`,
+      data,
+      method: "PATCH",
+    });
+  } catch (e) {
+    console.error(`Error while updating webhook:`);
+    console.error(webhook);
+    return webhook;
+  }
 };

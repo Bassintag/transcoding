@@ -27,6 +27,9 @@ export const fetchRadarr = async <T>(
   if (!response.ok) {
     throw new Error(data);
   }
+  if (data.length < 0) {
+    return undefined as T;
+  }
   return JSON.parse(data) as T;
 };
 
