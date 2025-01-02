@@ -1,5 +1,5 @@
 import { ffmpeg } from "./ffmpeg.ts";
-import { ffprobe, type FFProbeStream } from "./ffprobe.ts";
+import { ffprobe } from "./ffprobe.ts";
 import * as path from "path";
 import {
   deleteMovieFile,
@@ -7,10 +7,6 @@ import {
   listLanguages,
   listMovieFolderFiles,
 } from "./radarr.ts";
-import {
-  notSubtitledStreamSelector,
-  simpleLanguageStreamSelector,
-} from "./streamSelectors.ts";
 import {
   createDiscordWebhook,
   type DiscordWebhook,
@@ -93,27 +89,16 @@ const handleFile = async (param: QueuedWebhookCall) => {
   const videoStream = streams.find((s) => s.type === "video");
   const audioStreams = streams.filter((s) => s.type === "audio");
   if (videoStream == null) return;
-  let audioStream: FFProbeStream = audioStreams[audioStreams.length - 1];
-  const streamSelectors = [
-    simpleLanguageStreamSelector(videoStream.language),
-    notSubtitledStreamSelector(probeResult),
-  ];
-  for (const streamSelector of streamSelectors) {
-    const match = streamSelector(audioStreams);
-    if (match) {
-      audioStream = match;
-      break;
-    }
-  }
+  const first = audioStreams[0];
   discordWebhook = await updateDiscordWebhook({
     ...discordWebhook,
-    audioLanguage: audioStream.language,
+    audioLanguage: first.language,
     totalTime: probeResult.format.duration,
   });
   await ffmpeg({
     inputPath,
     outputPath,
-    audioIndex: audioStream.typeIndex,
+    audioIndex: audioStreams.map((s) => s.typeIndex),
     discordWebhook,
     streams,
   });
@@ -125,7 +110,7 @@ const handleFile = async (param: QueuedWebhookCall) => {
   });
   await unlink(inputPath);
   const languages = await listLanguages();
-  const audioLanguageName = getName(audioStream.language, "en");
+  const audioLanguageName = getName(first.language, "en");
   if (audioLanguageName == null) {
     throw new Error("Could not find language");
   }
@@ -164,5 +149,3 @@ Bun.serve({
   },
   port,
 });
-
-console.log("Listening on port:", port);

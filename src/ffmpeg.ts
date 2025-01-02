@@ -7,7 +7,7 @@ export interface FfmpegOptions {
   outputPath: string;
   discordWebhook: DiscordWebhook;
   streams: FFProbeStream[];
-  audioIndex?: number;
+  audioIndex?: number[];
 }
 
 const acceptedSubtitleCodecs = ["srt", "subrip", "mov_text"];
@@ -15,7 +15,7 @@ const acceptedSubtitleCodecs = ["srt", "subrip", "mov_text"];
 export const ffmpeg = async ({
   inputPath,
   outputPath,
-  audioIndex = 0,
+  audioIndex = [0],
   streams,
   discordWebhook,
 }: FfmpegOptions) => {
@@ -50,19 +50,12 @@ export const ffmpeg = async ({
     "0:v:0",
   ];
   if (audioIndex != null) {
-    // Audio
-    cmd.push(
-      "-map",
-      `0:a:${audioIndex}`,
-      "-c:a",
-      "aac",
-      "-ac",
-      "2",
-      "-b:a",
-      "128k",
-    );
+    cmd.push("-c:a", "aac", "-ac", "2", "-b:a", "128k");
+    for (const index of audioIndex) {
+      // Audio
+      cmd.push("-map", `0:a:${index}`);
+    }
   }
-  console.log(streams);
   const subStreams = streams.filter(
     (s) => s.type === "subtitle" && acceptedSubtitleCodecs.includes(s.codec),
   );
